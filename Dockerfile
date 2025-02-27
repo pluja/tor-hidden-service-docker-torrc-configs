@@ -10,6 +10,7 @@ ENV TOR_VERSION=0.4.8.14-r1
 RUN apk add --no-cache \
     tor=${TOR_VERSION} \
     bash \
+    curl \
     su-exec \
     && rm -rf /var/cache/apk/*
 
@@ -24,6 +25,9 @@ COPY entrypoint.sh /entrypoint.sh
 
 # Make the entrypoint script executable
 RUN chmod +x /entrypoint.sh
+
+HEALTHCHECK --interval=300s --timeout=3s \
+CMD curl -sS --socks5-hostname localhost:9050 https://check.torproject.org/ | grep -q Congratulations
 
 # Expose the Tor SOCKS port
 EXPOSE 9050
