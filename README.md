@@ -1,17 +1,22 @@
-# Tor Hidden Service Docker Container
+# 🧅 Tor Hidden Service Docker Container
 
 A minimal Docker image that runs Tor on Alpine Linux and allows you to easily create hidden services for your Docker containers.
 
-## Features
+## 🔍 Tech Stack
 
-- Based on Alpine Linux for minimal image size
-- Automatically creates Tor hidden services for specified containers
-- Easy configuration through environment variables or command-line arguments
-- Automatically displays onion addresses in container logs
-- Security-focused with minimal dependencies
-- Automated updates via DependencyBot
+- **Alpine**: v3.21
+- **Tor**: v0.4.8.14-r1
 
-## Usage
+## ✨ Features
+
+- 🏔️ Based on Alpine Linux for minimal image size
+- 🧅 Automatically creates Tor hidden services for specified containers
+- ⚙️ Easy configuration through environment variables or command-line arguments
+- 📝 Automatically displays onion addresses in container logs
+- 🔒 Security-focused with minimal dependencies
+- 🔄 Automated updates via DependencyBot
+
+## 🚀 Usage
 
 ### Basic Usage
 
@@ -39,7 +44,7 @@ services:
       - web
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 ### Environment Variables
 
@@ -71,7 +76,7 @@ docker run -d --name tor-hidden-service \
   web:web-container:80:80 api:api-container:8080:80
 ```
 
-## Retrieving Onion Addresses
+## 🔍 Retrieving Onion Addresses
 
 The onion addresses for your hidden services will be displayed in the container logs after Tor starts up:
 
@@ -95,22 +100,35 @@ In that case 'web' is the other containers name.
 docker exec tor-hidden-service cat /var/lib/tor/web/hostname
 ```
 
-## Building the Image
+## 🏗️ Building the Image
 
 ```bash
 docker build -t tor-hidden-service .
 ```
 
-## Security Considerations
+## 🔒 Security Considerations
 
 - The container runs Tor as the `tor` user, not as root
 - Hidden service private keys are stored in `/var/lib/tor/[SERVICE_NAME]/` with proper permissions
 - For production use, consider mounting these directories as volumes to persist the onion addresses
 
-## License
+## 📋 Health Checks
 
-MIT
+The container includes a health check that verifies Tor is working correctly by connecting to the Tor network every 5 minutes.
 
-## Contributing
+## 📦 Exposed Ports
+
+- `9050`: Tor SOCKS proxy port
+
+## 📄 License
+
+[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+
+## 👥 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 🙏 Acknowledgements
+
+- [Tor Project](https://www.torproject.org/) for their incredible work on privacy tools
+- [Alpine Linux](https://alpinelinux.org/) for providing a minimal and secure base image
