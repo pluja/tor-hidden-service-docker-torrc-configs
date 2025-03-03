@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Run weekly
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,7 +25,7 @@ jobs:
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      
+    
     - name: Build Docker image
       uses: docker/build-push-action@v6
       with:
@@ -29,6 +34,8 @@ jobs:
         push: false
         load: true
         tags: tor-hidden-service:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     
     - name: Test Docker image
       run: |
@@ -59,15 +66,24 @@ jobs:
         push: false
         load: true
         tags: tor-hidden-service:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.26.0
       with:
         image-ref: 'tor-hidden-service:test'
-        format: 'table'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
         exit-code: '1'
         ignore-unfixed: true
         severity: 'CRITICAL,HIGH'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
     
   publish:
     runs-on: ubuntu-latest
@@ -97,16 +113,27 @@ jobs:
         echo "TOR_VERSION=$TOR_VERSION" >> $GITHUB_ENV
         echo "tor_version=$TOR_VERSION" >> $GITHUB_OUTPUT
     
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository_owner }}/tor-hidden-service
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=sha
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=tor-${{ env.TOR_VERSION }},enable=${{ env.TOR_VERSION != '' }}
+    
     - name: Build and push Docker image
       uses: docker/build-push-action@v6
       with:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: |
-          ghcr.io/${{ github.repository_owner }}/tor-hidden-service:latest
-          ghcr.io/${{ github.repository_owner }}/tor-hidden-service:${{ github.sha }}
-          ghcr.io/${{ github.repository_owner }}/tor-hidden-service:tor-${{ env.TOR_VERSION }}
+        tags: ${{ steps.meta.outputs.tags }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         labels: |
           org.opencontainers.image.title=Tor Hidden Service
           org.opencontainers.image.description=Docker container for running Tor hidden services & Tor proxy
