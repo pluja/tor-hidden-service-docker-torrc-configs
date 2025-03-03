@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Start with a clean torrc configuration
+# Keep the basic configuration and remove any hidden service entries
+grep -v "HiddenService" /etc/tor/torrc > /tmp/torrc.new
+cat /tmp/torrc.new > /etc/tor/torrc
+rm /tmp/torrc.new
+
 # Function to create a hidden service configuration
 create_hidden_service() {
     local service_name=$1
@@ -13,9 +19,20 @@ create_hidden_service() {
         virtual_port=$target_port
     fi
 
-    # Create directory for the hidden service
+    # Create directory for the hidden service if it doesn't exist
     local service_dir="/var/lib/tor/${service_name}"
-    mkdir -p "$service_dir"
+    if [ ! -d "$service_dir" ]; then
+        mkdir -p "$service_dir"
+    fi
+    
+    # Check if this is a pre-existing service with keys
+    local has_keys=false
+    if [ -f "${service_dir}/private_key" ] || [ -f "${service_dir}/hs_ed25519_secret_key" ]; then
+        has_keys=true
+        echo "Found existing keys for hidden service: $service_name"
+    fi
+    
+    # Ensure proper permissions
     chown -R tor:tor "$service_dir"
     chmod -R 700 "$service_dir"
 

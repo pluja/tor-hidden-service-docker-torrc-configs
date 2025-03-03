@@ -112,6 +112,64 @@ docker build -t tor-hidden-service .
 - Hidden service private keys are stored in `/var/lib/tor/[SERVICE_NAME]/` with proper permissions
 - For production use, consider mounting these directories as volumes to persist the onion addresses
 
+## 🔄 Reusing Existing Keys
+
+When you mount a volume containing existing hidden service keys, the container will automatically detect and reuse them. This allows you to maintain the same .onion address across container restarts or recreations.
+
+### Option 1: Mounting the entire Tor data directory
+
+```yaml
+services:
+  tor:
+    image: ghcr.io/hundehausen/tor-hidden-service:latest
+    container_name: tor-hidden-service
+    environment:
+      - HS_WEB=web:80:80
+    volumes:
+      - tor-keys:/var/lib/tor  # Persist all onion addresses
+
+volumes:
+  tor-keys:
+    driver: local
+```
+
+### Option 2: Selectively mounting specific hidden service directories
+
+You can also selectively mount specific hidden service directories to reuse only certain keys:
+
+```yaml
+services:
+  tor:
+    image: ghcr.io/hundehausen/tor-hidden-service:latest
+    container_name: tor-hidden-service
+    environment:
+      - HS_WEB=web:80:80
+      - HS_API=api:8080:80
+      - HS_BLOG=blog:80:80
+    volumes:
+      - tor-data:/var/lib/tor  # General volume for Tor data
+      - ./existing-keys/WEB:/var/lib/tor/WEB  # Reuse existing WEB keys
+      - ./existing-keys/BLOG:/var/lib/tor/BLOG  # Reuse existing BLOG keys
+      # API will get new keys since we're not mounting anything specific for it
+
+volumes:
+  tor-data:
+    driver: local
+```
+
+This approach allows you to:
+- Reuse keys for specific services while generating new keys for others
+- Migrate keys from other Tor hidden services
+- Manage keys for different services separately
+
+The container will:
+1. Detect existing hidden service directories
+2. Apply proper permissions to them
+3. Configure Tor to use the existing keys
+4. Avoid duplicate configurations that could cause errors
+
+If you manually add or remove hidden service directories while the container is running, you'll need to restart the container for the changes to take effect.
+
 ## 📋 Health Checks
 
 The container includes a health check that verifies Tor is working correctly by connecting to the Tor network every 5 minutes.
