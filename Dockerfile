@@ -1,10 +1,10 @@
 FROM --platform=$BUILDPLATFORM alpine:3.21
 
 LABEL maintainer="hundehausen"
-LABEL description="Tor Hidden Service Docker Container"
+LABEL description="Tor Hidden Service Docker Image"
 
 # Set Tor version - this will be updated by DependencyBot
-ENV TOR_VERSION=0.4.8.14-r1
+ENV TOR_VERSION=0.4.8.15-r0
 
 # Install packages
 RUN apk add --no-cache \
