@@ -6,18 +6,15 @@ LABEL description="Tor Hidden Service Docker Image"
 # Set Tor version - this will be updated by DependencyBot
 ENV TOR_VERSION=0.4.8.16-r0
 
-# Install packages
+# Install packages & Create directory
 RUN apk add --no-cache \
     tor=${TOR_VERSION} \
-    bash \
     curl \
     su-exec \
-    && rm -rf /var/cache/apk/*
-
-# Create directory for hidden services
-RUN mkdir -p /var/lib/tor/hidden_service/ \
+    && mkdir -p /var/lib/tor/hidden_service/ \
     && chown -R tor:tor /var/lib/tor/ \
-    && chmod -R 700 /var/lib/tor/
+    && chmod -R 700 /var/lib/tor/ \
+    && rm -rf /var/cache/apk/*
 
 # Copy configuration files and scripts
 COPY torrc /etc/tor/torrc
