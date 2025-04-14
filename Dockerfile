@@ -16,6 +16,9 @@ RUN apk add --no-cache \
     && chmod -R 700 /var/lib/tor/ \
     && rm -rf /var/cache/apk/*
 
+# Upgrade c-ares to fix CVE-2025-31498
+RUN apk upgrade --no-cache c-ares
+
 # Copy configuration files and scripts
 COPY torrc /etc/tor/torrc
 COPY entrypoint.sh /entrypoint.sh
