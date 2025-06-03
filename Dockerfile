@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM alpine:3.21
+FROM --platform=$BUILDPLATFORM alpine:3.22
 
 LABEL maintainer="hundehausen"
 LABEL description="Tor Hidden Service Docker Image"
