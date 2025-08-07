@@ -12,6 +12,7 @@ A minimal Docker image that runs Tor on Alpine Linux and allows you to easily cr
 - 🏔️ Based on Alpine Linux for minimal image size
 - 🧅 Automatically creates Tor hidden services for specified containers
 - ⚙️ Easy configuration through environment variables or command-line arguments
+- 🎛️ Global and service-specific Tor configuration via TORRC_ environment variables
 - 📝 Automatically displays onion addresses in container logs
 - 🔒 Security-focused with minimal dependencies
 - 🔄 Automated updates via DependencyBot
@@ -66,6 +67,79 @@ HS_WEB=web-container:80:80
 HS_API=api-container:8080:80
 ```
 
+### Advanced Tor Configuration
+
+You can customize Tor's configuration using TORRC environment variables:
+
+#### Global Tor Configuration
+
+Set global Tor options that apply to the entire Tor instance:
+
+```bash
+docker run -d --name tor-hidden-service \
+  -e HS_WEB=web-container:80:80 \
+  -e TORRC_Log="notice file /var/log/tor/tor.log" \
+  -e TORRC_MaxCircuitDirtiness=600 \
+  -e TORRC_NewCircuitPeriod=30 \
+  ghcr.io/hundehausen/tor-hidden-service:latest
+```
+
+#### Service-Specific Configuration
+
+Apply specific Tor configurations to individual hidden services using the format `TORRC_[SERVICE_NAME]_[CONFIG]`:
+
+```bash
+docker run -d --name tor-hidden-service \
+  -e HS_WEB=web-container:80:80 \
+  -e HS_API=api-container:8080:80 \
+  -e TORRC_WEB_HiddenServiceMaxStreams=10 \
+  -e TORRC_WEB_HiddenServiceMaxStreamsCloseCircuit=1 \
+  -e TORRC_API_HiddenServiceAllowUnknownPorts=1 \
+  -e TORRC_API_HiddenServiceMaxStreams=5 \
+  ghcr.io/hundehausen/tor-hidden-service:latest
+```
+
+#### Docker Compose Example with Advanced Configuration
+
+```yaml
+services:
+  web:
+    image: nginx:alpine
+    container_name: web-container
+
+  api:
+    image: node:alpine
+    container_name: api-container
+
+  tor:
+    image: ghcr.io/hundehausen/tor-hidden-service:latest
+    container_name: tor-hidden-service
+    environment:
+      # Hidden services
+      - HS_WEB=web:80:80
+      - HS_API=api:3000:80
+      
+      # Global Tor configuration
+      - TORRC_Log=notice file /var/log/tor/tor.log
+      - TORRC_MaxCircuitDirtiness=600
+      - TORRC_NewCircuitPeriod=30
+      
+      # Service-specific configuration
+      - TORRC_WEB_HiddenServiceMaxStreams=10
+      - TORRC_WEB_HiddenServiceMaxStreamsCloseCircuit=1
+      - TORRC_API_HiddenServiceAllowUnknownPorts=1
+      - TORRC_API_HiddenServiceMaxStreams=5
+    depends_on:
+      - web
+      - api
+```
+
+**Configuration Rules:**
+- Global configs: `TORRC_[CONFIG_NAME]` - Applied to the entire Tor instance
+- Service-specific configs: `TORRC_[SERVICE_NAME]_[CONFIG_NAME]` - Applied only to that hidden service
+- Service names must match the name used in `HS_[SERVICE_NAME]` variables
+- All standard Tor configuration options are supported
+
 ### Command-Line Arguments
 
 You can also specify hidden services as command-line arguments:
@@ -75,6 +149,8 @@ docker run -d --name tor-hidden-service \
   ghcr.io/hundehausen/tor-hidden-service:latest \
   web:web-container:80:80 api:api-container:8080:80
 ```
+
+**Note:** When using command-line arguments, you can still use global TORRC configuration variables, but service-specific TORRC variables will only work with environment variable-defined services.
 
 ## 🔍 Retrieving Onion Addresses
 
