@@ -26,9 +26,7 @@ create_hidden_service() {
     fi
     
     # Check if this is a pre-existing service with keys
-    local has_keys=false
     if [ -f "${service_dir}/private_key" ] || [ -f "${service_dir}/hs_ed25519_secret_key" ]; then
-        has_keys=true
         echo "Found existing keys for hidden service: $service_name"
     fi
     
@@ -61,14 +59,16 @@ done
 # Process command line arguments
 # Format: [SERVICE_NAME]:[TARGET_HOST]:[TARGET_PORT]:[VIRTUAL_PORT]
 for arg in "$@"; do
-    if [[ "$arg" == *:*:* ]]; then
-        service_name=$(echo "$arg" | cut -d: -f1)
-        target_host=$(echo "$arg" | cut -d: -f2)
-        target_port=$(echo "$arg" | cut -d: -f3)
-        virtual_port=$(echo "$arg" | cut -d: -f4)
-        
-        create_hidden_service "$service_name" "$target_host" "$target_port" "$virtual_port"
-    fi
+    case "$arg" in
+        *:*:*)
+            service_name=$(echo "$arg" | cut -d: -f1)
+            target_host=$(echo "$arg" | cut -d: -f2)
+            target_port=$(echo "$arg" | cut -d: -f3)
+            virtual_port=$(echo "$arg" | cut -d: -f4)
+
+            create_hidden_service "$service_name" "$target_host" "$target_port" "$virtual_port"
+            ;;
+    esac
 done
 
 # Make sure the Tor data directory has correct permissions
@@ -92,13 +92,16 @@ print_onion_addresses() {
 # Start printing onion addresses in the background
 print_onion_addresses &
 
+# If no arguments were provided, run Tor with the default config as the tor user
+if [ $# -eq 0 ]; then
+    exec su-exec tor tor -f /etc/tor/torrc
+fi
+
 # If the first argument is "tor", run it as the tor user
 if [ "$1" = "tor" ]; then
     shift
     exec su-exec tor tor "$@"
-else
-    # Otherwise, run the command as is
-    exec "$@"
 fi
 
-exec su-exec tor tor -f /etc/tor/torrc
+# Otherwise, run the command as-is
+exec "$@"

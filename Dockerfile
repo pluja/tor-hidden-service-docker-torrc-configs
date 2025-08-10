@@ -10,8 +10,8 @@ ENV TOR_VERSION=0.4.8.17-r0
 RUN apk add --no-cache \
     tor=${TOR_VERSION} \
     curl \
+    ca-certificates \
     su-exec \
-    && mkdir -p /var/lib/tor/hidden_service/ \
     && chown -R tor:tor /var/lib/tor/ \
     && chmod -R 700 /var/lib/tor/ \
     && rm -rf /var/cache/apk/*
