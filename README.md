@@ -5,7 +5,7 @@ A minimal Docker image that runs Tor on Alpine Linux and allows you to easily cr
 ## 🔍 Tech Stack
 
 - **Alpine**: v3.22
-- **Tor**: v0.4.8.18-r2
+- **Tor**: v0.4.8.19-r0
 
 ## ✨ Features
 
