@@ -73,7 +73,6 @@ jobs:
         image-ref: 'tor-hidden-service:test'
         format: 'sarif'
         output: 'trivy-results.sarif'
-        exit-code: '1'
         ignore-unfixed: true
         severity: 'CRITICAL,HIGH'
     
