@@ -4,7 +4,7 @@ LABEL maintainer="hundehausen"
 LABEL description="Tor Hidden Service Docker Image"
 
 # Set Tor version - this will be updated by DependencyBot
-ENV TOR_VERSION=0.4.8.21-r0
+ENV TOR_VERSION=0.4.8.22-r0
 
 # Install packages & Create directory
 RUN apk add --no-cache \
@@ -15,9 +15,6 @@ RUN apk add --no-cache \
     && chown -R tor:tor /var/lib/tor/ \
     && chmod -R 700 /var/lib/tor/ \
     && rm -rf /var/cache/apk/*
-
-# Upgrade c-ares to fix CVE-2025-31498
-RUN apk upgrade --no-cache c-ares
 
 # Copy configuration files and scripts
 COPY torrc /etc/tor/torrc
