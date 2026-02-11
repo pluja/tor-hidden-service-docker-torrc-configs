@@ -1,22 +1,66 @@
-# 🧅 Tor Hidden Service Docker Container
+# Tor Hidden Service Docker
 
-A minimal Docker image that runs Tor on Alpine Linux and allows you to easily create hidden services for your Docker containers.
+[![Docker Build](https://img.shields.io/github/actions/workflow/status/hundehausen/tor-hidden-service-docker/build.yml?branch=main&style=flat-square)](https://github.com/hundehausen/tor-hidden-service-docker/actions)
+[![Tor Version](https://img.shields.io/badge/Tor-0.4.8.22--r0-purple?style=flat-square)](https://gitweb.torproject.org/tor.git)
+[![Alpine Version](https://img.shields.io/badge/Alpine-3.23-blue?style=flat-square)](https://alpinelinux.org/)
 
-## 🔍 Tech Stack
+A lightweight, secure Docker container for running Tor hidden services. Built on Alpine Linux with a focus on minimal footprint and maximum security.
 
-- **Alpine**: v3.23
-- **Tor**: v0.4.8.22-r0
+## Table of Contents
+
+- [🚀 Quick Start](#-quick-start)
+- [✨ Features](#-features)
+- [⚙️ How It Works](#️-how-it-works)
+- [📦 Usage](#-usage)
+- [🔧 Configuration](#-configuration)
+- [🛡️ Security](#️-security)
+- [🔑 Key Persistence](#-key-persistence)
+- [📚 Examples](#-examples)
+- [💓 Health Checks](#-health-checks)
+- [🔍 Troubleshooting](#-troubleshooting)
+- [🤝 Contributing](#-contributing)
+
+## 🚀 Quick Start
+
+```bash
+# Run with a simple web service
+docker run -d --name my-tor-service \
+  -e HS_WEB=web:80:80 \
+  ghcr.io/hundehausen/tor-hidden-service:latest
+
+# View your .onion address
+docker logs my-tor-service
+```
+
+Or use Docker Compose:
+
+```bash
+git clone https://github.com/hundehausen/tor-hidden-service-docker.git
+cd tor-hidden-service-docker
+docker compose up -d
+docker compose logs -f tor
+```
 
 ## ✨ Features
 
-- 🏔️ Based on Alpine Linux for minimal image size
-- 🧅 Automatically creates Tor hidden services for specified containers
-- ⚙️ Easy configuration through environment variables or command-line arguments
-- 📝 Automatically displays onion addresses in container logs
-- 🔒 Security-focused with minimal dependencies
-- 🔄 Automated updates via DependencyBot
+- 🪶 **Minimal footprint** - Alpine Linux base (~44MB)
+- 🎛️ **Easy hidden services** - Configure via environment variables
+- 🔒 **Security-first** - Runs as non-root user with minimal privileges
+- 🛡️ **Input validation** - Defense-in-depth against path traversal and injection
+- 🔎 **Auto-discovery** - Onion addresses displayed in logs
+- 🔑 **Key persistence** - Reuse existing keys across restarts
+- 💓 **Health checks** - Built-in container health monitoring
+- 🛑 **Graceful shutdown** - Proper SIGTERM/SIGINT handling with 30s timeout
+- 🏗️ **Multi-arch** - Supports linux/amd64 and linux/arm64
 
-## 🚀 Usage
+## ⚙️ How It Works
+
+1. The container runs a Tor daemon that registers your services on the Tor network
+2. Each `HS_*` environment variable creates a hidden service with its own `.onion` address
+3. Incoming connections to a `.onion` address are forwarded to the specified target container and port
+4. A SOCKS proxy on port 9050 is available for outbound Tor connections
+
+## 📦 Usage
 
 ### Basic Usage
 
@@ -26,180 +70,286 @@ docker run -d --name tor-hidden-service \
   ghcr.io/hundehausen/tor-hidden-service:latest
 ```
 
-### Docker Compose Example
+### Docker Compose
 
 ```yaml
 services:
   web:
     image: nginx:alpine
     container_name: web-container
-    # Your web service configuration...
+    volumes:
+      - ./example-site:/usr/share/nginx/html
+    networks:
+      - tor-network
 
   tor:
     image: ghcr.io/hundehausen/tor-hidden-service:latest
     container_name: tor-hidden-service
     environment:
-      - HS_WEB=web:80:80  # Format: HS_[NAME]=[HOST]:[PORT]:[VIRTUAL_PORT]
-    depends_on:
-      - web
+      - HS_WEB=web:80:80
+      - SOCKS_BIND=127.0.0.1
+    volumes:
+      - tor-data:/var/lib/tor
+    networks:
+      - tor-network
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+networks:
+  tor-network:
+    driver: bridge
+
+volumes:
+  tor-data:
 ```
 
-## ⚙️ Configuration
+### Retrieving Onion Addresses
 
-### Environment Variables
-
-You can specify hidden services using environment variables in the format:
-
-```
-HS_[SERVICE_NAME]=[TARGET_HOST]:[TARGET_PORT]:[VIRTUAL_PORT]
-```
-
-Where:
-- `SERVICE_NAME`: A unique name for the service (will be used for the directory name)
-- `TARGET_HOST`: The hostname or container name of the service
-- `TARGET_PORT`: The port the service is running on
-- `VIRTUAL_PORT`: (Optional) The port that will be exposed on the .onion address. If not specified, it will use the same as TARGET_PORT.
-
-Example:
-```
-HS_WEB=web-container:80:80
-HS_API=api-container:8080:80
-```
-
-### Command-Line Arguments
-
-You can also specify hidden services as command-line arguments:
-
-```bash
-docker run -d --name tor-hidden-service \
-  ghcr.io/hundehausen/tor-hidden-service:latest \
-  web:web-container:80:80 api:api-container:8080:80
-```
-
-## 🔍 Retrieving Onion Addresses
-
-The onion addresses for your hidden services will be displayed in the container logs after Tor starts up:
+From container logs:
 
 ```bash
 docker logs tor-hidden-service
 ```
 
-You should see output like:
-
+Output:
 ```
 ======== TOR HIDDEN SERVICES ========
-web: 2xxiyj6noereyty4xdxjg5akcop7ylnotvf4fqre57g7xuppy4tixvqd.onion
-api: 7gtpkyhhhsbowew7zha6z7h7vlffqkn3nbu2f6hgin4xddq22o7yytyd.onion
+WEB: 2xxiyj6noereyty4xdxjg5akcop7ylnotvf4fqre57g7xuppy4tixvqd.onion
+API: 7gtpkyhhhsbowew7zha6z7h7vlffqkn3nbu2f6hgin4xddq22o7yytyd.onion
 ====================================
 ```
 
-You can also retrieve a specific onion address by executing a command in the container:
-In that case 'web' is the other containers name.
+From the filesystem:
 
 ```bash
-docker exec tor-hidden-service cat /var/lib/tor/web/hostname
+# Get specific service address
+docker exec tor-hidden-service cat /var/lib/tor/WEB/hostname
+
+# List all services
+docker exec tor-hidden-service ls /var/lib/tor/
 ```
 
-## 🏗️ Building the Image
+## 🔧 Configuration
+
+### Environment Variables
+
+Configure hidden services using the format:
+
+```
+HS_[SERVICE_NAME]=[TARGET_HOST]:[TARGET_PORT]:[VIRTUAL_PORT]
+```
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SERVICE_NAME` | Unique identifier (alphanumeric, hyphens, underscores) | `WEB`, `API`, `BLOG` |
+| `TARGET_HOST` | Hostname or container name | `web`, `api.internal` |
+| `TARGET_PORT` | Port the service listens on | `80`, `8080` |
+| `VIRTUAL_PORT` | (Optional) Port exposed on .onion address, defaults to `TARGET_PORT` | `80` |
+
+**Examples:**
 
 ```bash
-docker build -t tor-hidden-service .
+# Single service
+HS_WEB=web-container:80:80
+
+# Multiple services (each gets a unique .onion address)
+HS_WEB=web:80:80
+HS_API=api:8080:80
+HS_BLOG=blog:3000:80
 ```
 
-## 🔒 Security Considerations
+### SOCKS Proxy
 
-- The container runs Tor as the `tor` user, not as root
-- Hidden service private keys are stored in `/var/lib/tor/[SERVICE_NAME]/` with proper permissions
-- For production use, consider mounting these directories as volumes to persist the onion addresses
+The container exposes a SOCKS5 proxy on port 9050 for routing traffic through Tor.
 
-### ⚠️ SOCKS Proxy Security Deprecation
-
-**Important:** The SOCKS proxy currently defaults to binding on all interfaces (`0.0.0.0:9050`) for backward compatibility. This allows other containers or networks to use your Tor proxy, which may be a security risk.
-
-**To secure your deployment**, explicitly set the bind address to localhost:
+By default, the proxy binds to `0.0.0.0` (all interfaces). **For production, restrict this to localhost:**
 
 ```yaml
 environment:
   - SOCKS_BIND=127.0.0.1
 ```
 
-In a future major version (v2.0), the default will change to `127.0.0.1` (localhost only). When using the deprecated default, you'll see a warning in the container logs.
+> **Note:** The default will change to `127.0.0.1` in a future major version.
 
-## 🔄 Reusing Existing Keys
+### Command-Line Arguments
 
-When you mount a volume containing existing hidden service keys, the container will automatically detect and reuse them. This allows you to maintain the same .onion address across container restarts or recreations.
+You can also pass services as arguments:
 
-### Option 1: Mounting the entire Tor data directory
+```bash
+docker run -d \
+  ghcr.io/hundehausen/tor-hidden-service:latest \
+  web:web-container:80:80 \
+  api:api-container:8080:80
+```
+
+## 🛡️ Security
+
+### Hardening Checklist
+
+- 🚫 **Drop capabilities** - Add `cap_drop: [ALL]` to your compose file
+- 📊 **Set resource limits** - Prevent resource exhaustion (see [Usage](#-usage))
+- 🔐 **Restrict SOCKS proxy** - Set `SOCKS_BIND=127.0.0.1` in production
+- 💾 **Persist keys securely** - Mount `/var/lib/tor` as a volume, never commit keys to git
+
+### Protecting Your Keys
+
+The `hs_ed25519_secret_key` files in `/var/lib/tor/[service]/` are the cryptographic identity of your `.onion` address. If compromised, an attacker can impersonate your service.
+
+⚠️ **Never commit private keys to version control.**
+
+### Input Validation
+
+The entrypoint script validates all inputs:
+- **Service names** - Alphanumeric, hyphens, and underscores only (max 64 chars)
+- **Ports** - Numeric, range 1-65535
+- **Hostnames** - No shell metacharacters allowed
+- **Path traversal** - Prevented via allowlist and path verification
+
+## 🔑 Key Persistence
+
+### Option 1: Full Directory Persistence
+
+```yaml
+volumes:
+  - tor-data:/var/lib/tor
+```
+
+### Option 2: Selective Key Reuse
+
+```yaml
+volumes:
+  - tor-data:/var/lib/tor
+  - ./backup-keys/WEB:/var/lib/tor/WEB  # Restore specific service
+  - ./backup-keys/API:/var/lib/tor/API
+```
+
+### Backing Up Keys
+
+```bash
+# Copy keys from running container
+docker cp tor-hidden-service:/var/lib/tor/WEB ./backup-keys/
+
+# Or archive the entire volume
+docker run --rm -v tor-data:/data -v $(pwd):/backup alpine \
+  tar czf /backup/tor-keys.tar.gz -C /data .
+```
+
+## 📚 Examples
+
+### Static Website
 
 ```yaml
 services:
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./website:/usr/share/nginx/html:ro
+    networks:
+      - tor
+
   tor:
     image: ghcr.io/hundehausen/tor-hidden-service:latest
-    container_name: tor-hidden-service
     environment:
-      - HS_WEB=web:80:80
+      - HS_SITE=nginx:80:80
+      - SOCKS_BIND=127.0.0.1
     volumes:
-      - tor-keys:/var/lib/tor  # Persist all onion addresses
+      - tor-keys:/var/lib/tor
+    cap_drop:
+      - ALL
+    networks:
+      - tor
 
+networks:
+  tor:
 volumes:
   tor-keys:
-    driver: local
 ```
 
-### Option 2: Selectively mounting specific hidden service directories
-
-You can also selectively mount specific hidden service directories to reuse only certain keys:
+### Multiple Services
 
 ```yaml
 services:
+  web:
+    image: nginx:alpine
+    networks:
+      - tor
+
+  api:
+    image: node:18-alpine
+    networks:
+      - tor
+
   tor:
     image: ghcr.io/hundehausen/tor-hidden-service:latest
-    container_name: tor-hidden-service
     environment:
-      - HS_WEB=web:80:80
-      - HS_API=api:8080:80
-      - HS_BLOG=blog:80:80
+      - HS_WEBSITE=web:80:80
+      - HS_API=api:3000:80
+      - HS_ADMIN=api:8080:80
+      - SOCKS_BIND=127.0.0.1
     volumes:
-      - tor-data:/var/lib/tor  # General volume for Tor data
-      - ./existing-keys/WEB:/var/lib/tor/WEB  # Reuse existing WEB keys
-      - ./existing-keys/BLOG:/var/lib/tor/BLOG  # Reuse existing BLOG keys
-      # API will get new keys since we're not mounting anything specific for it
+      - tor-data:/var/lib/tor
+    cap_drop:
+      - ALL
+    networks:
+      - tor
 
+networks:
+  tor:
 volumes:
   tor-data:
-    driver: local
 ```
 
-This approach allows you to:
-- Reuse keys for specific services while generating new keys for others
-- Migrate keys from other Tor hidden services
-- Manage keys for different services separately
+## 💓 Health Checks
 
-The container will:
-1. Detect existing hidden service directories
-2. Apply proper permissions to them
-3. Configure Tor to use the existing keys
-4. Avoid duplicate configurations that could cause errors
+The container includes a health check that verifies Tor network connectivity:
 
-If you manually add or remove hidden service directories while the container is running, you'll need to restart the container for the changes to take effect.
+- **Interval:** 300 seconds (5 minutes)
+- **Timeout:** 3 seconds
+- **Test:** Connects to `check.torproject.org` via SOCKS proxy
 
-## 📋 Health Checks
+Check health status:
 
-The container includes a health check that verifies Tor is working correctly by connecting to the Tor network every 5 minutes.
+```bash
+docker ps --filter name=tor-hidden-service --format "table {{.Names}}\t{{.Status}}"
+```
 
-## 📦 Exposed Ports
+## 🔍 Troubleshooting
 
-- `9050`: Tor SOCKS proxy port
+### Can't connect to hidden service
 
-## 📄 License
+1. Verify Tor bootstrap: `docker logs tor-hidden-service | grep "Bootstrapped 100%"`
+2. Check service configuration: `docker exec tor-hidden-service cat /etc/tor/torrc`
+3. Ensure target container is reachable: `docker exec tor-hidden-service ping web`
 
-[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+### Onion address keeps changing
 
-## 👥 Contributing
+Keys are not being persisted. Add a volume for `/var/lib/tor`:
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```yaml
+volumes:
+  - tor-data:/var/lib/tor
+```
 
-## 🙏 Acknowledgements
+### High memory usage
 
-- [Tor Project](https://www.torproject.org/) for their incredible work on privacy tools
-- [Alpine Linux](https://alpinelinux.org/) for providing a minimal and secure base image
+Set resource limits in your compose file:
+
+```yaml
+deploy:
+  resources:
+    limits:
+      memory: 256M
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request on [GitHub](https://github.com/hundehausen/tor-hidden-service-docker).
+
+---
+
+**Disclaimer:** This tool is for legitimate privacy purposes only. Users are responsible for complying with all applicable laws and regulations in their jurisdiction.
