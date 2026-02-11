@@ -3,8 +3,18 @@ name: Build and Test
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'torrc'
+      - '.github/workflows/build.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'Dockerfile'
+      - 'entrypoint.sh'
+      - 'torrc'
+      - '.github/workflows/build.yml'
 
 permissions:
   contents: read
