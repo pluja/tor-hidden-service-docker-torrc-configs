@@ -14,10 +14,28 @@ services:
     container_name: tor-hidden-service
     environment:
       - HS_WEB=web:80:80  # Format: HS_[NAME]=[HOST]:[PORT]:[VIRTUAL_PORT]
+      # SECURITY: Set SOCKS_BIND=127.0.0.1 to restrict SOCKS proxy to localhost only
+      # Default is 0.0.0.0 for backward compatibility but will change to 127.0.0.1 in v2.0
+      # - SOCKS_BIND=127.0.0.1
     networks:
       - tor-network
     volumes:
       - tor-data:/var/lib/tor  # Persist onion addresses
+    # Resource limits to prevent resource exhaustion attacks
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
+    # Security: Drop all Linux capabilities for minimal privileges
+    cap_drop:
+      - ALL
+    # Only add back specific capabilities if absolutely required
+    # cap_add:
+    #   - NET_BIND_SERVICE  # Uncomment if binding to ports < 1024 (not needed for hidden services)
 
 networks:
   tor-network:

@@ -112,6 +112,19 @@ docker build -t tor-hidden-service .
 - Hidden service private keys are stored in `/var/lib/tor/[SERVICE_NAME]/` with proper permissions
 - For production use, consider mounting these directories as volumes to persist the onion addresses
 
+### ⚠️ SOCKS Proxy Security Deprecation
+
+**Important:** The SOCKS proxy currently defaults to binding on all interfaces (`0.0.0.0:9050`) for backward compatibility. This allows other containers or networks to use your Tor proxy, which may be a security risk.
+
+**To secure your deployment**, explicitly set the bind address to localhost:
+
+```yaml
+environment:
+  - SOCKS_BIND=127.0.0.1
+```
+
+In a future major version (v2.0), the default will change to `127.0.0.1` (localhost only). When using the deprecated default, you'll see a warning in the container logs.
+
 ## 🔄 Reusing Existing Keys
 
 When you mount a volume containing existing hidden service keys, the container will automatically detect and reuse them. This allows you to maintain the same .onion address across container restarts or recreations.
