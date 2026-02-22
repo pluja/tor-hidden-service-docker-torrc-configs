@@ -94,6 +94,9 @@ services:
       - tor-network
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
     deploy:
       resources:
         limits:
@@ -191,7 +194,7 @@ docker run -d \
 
 ### Hardening Checklist
 
-- 🚫 **Drop capabilities** - Add `cap_drop: [ALL]` to your compose file
+- 🚫 **Drop capabilities** - Add `cap_drop: [ALL]` and `cap_add: [CHOWN, FOWNER]` to your compose file
 - 📊 **Set resource limits** - Prevent resource exhaustion (see [Usage](#-usage))
 - 🔐 **Restrict SOCKS proxy** - Set `SOCKS_BIND=127.0.0.1` in production
 - 💾 **Persist keys securely** - Mount `/var/lib/tor` as a volume, never commit keys to git
@@ -261,6 +264,9 @@ services:
       - tor-keys:/var/lib/tor
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
     networks:
       - tor
 
@@ -295,6 +301,9 @@ services:
       - tor-data:/var/lib/tor
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
     networks:
       - tor
 
