@@ -13,18 +13,11 @@ services:
     build: .
     container_name: tor-hidden-service
     environment:
-      # Format: HS_[NAME]=[HOST]:[PORT]:[VIRTUAL_PORT]
+      # HS_[NAME]: [HOST]:[PORT]:[VIRTUAL_PORT]
       HS_WEB: web:80:80
-      # SECURITY: Set SOCKS_BIND=127.0.0.1 to restrict SOCKS proxy to
-      # localhost only. Default is 0.0.0.0 for backward compatibility but
-      # will change to 127.0.0.1 in v2.0.
-      # SOCKS_BIND: 127.0.0.1
+      # SOCKS_BIND: 127.0.0.1   # restrict SOCKS to localhost (default 0.0.0.0 until v2.0)
       #
-      # Optional: opt-in DoS hardening on the WEB onion. PoW makes onion
-      # clients spend CPU before reaching an introduction circuit; the
-      # IntroDoSDefense lines cap introduction rate per circuit. See the
-      # "Custom torrc directives" section in README.md for the full
-      # mechanism and the TORRC global counterpart.
+      # Per-HS DoS hardening. See README "Custom torrc directives".
       # HSTORRC_WEB: |
       #   HiddenServicePoWDefensesEnabled 1
       #   HiddenServicePoWQueueRate 250

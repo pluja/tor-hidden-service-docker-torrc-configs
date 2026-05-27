@@ -67,11 +67,7 @@ else
     echo "SOCKS proxy configured to bind to: ${SOCKS_BIND}:9050"
 fi
 
-# Append a multi-line block of torrc directives (verbatim) under a labeled
-# section header. NUL bytes and CR are stripped so values pasted from
-# Windows-edited sources or accidentally containing binary noise do not
-# corrupt the config. Tor itself validates directive names and values at
-# startup; this layer does not reimplement that.
+# Append a torrc block under a section comment. Strips NUL/CR.
 append_torrc_block() {
     block_label=$1
     block_content=$2
@@ -85,8 +81,6 @@ append_torrc_block() {
     printf '%s\n' "$block_content" | tr -d '\000\r' | sed 's/^/    /'
 }
 
-# Global custom torrc from the TORRC env var. Inserted after SocksPort and
-# before any HiddenService section so directives are scoped globally.
 append_torrc_block "Custom global torrc (TORRC env var)" "${TORRC:-}"
 
 # Security validation functions
@@ -219,10 +213,7 @@ create_hidden_service() {
     printf 'HiddenServiceDir %s\n' "$service_dir" >> /etc/tor/torrc
     printf 'HiddenServicePort %s %s:%s\n' "$virtual_port" "$target_host" "$target_port" >> /etc/tor/torrc
 
-    # Per-service custom torrc from HSTORRC_<SERVICE>. Hyphens in service
-    # names map to underscores for env-var lookup (POSIX env names cannot
-    # contain hyphens). Tor groups directives by HiddenServiceDir, so any
-    # HS-specific directives appended here scope to this service only.
+    # Hyphens in service names become underscores; env names can't have hyphens.
     hs_torrc_var="HSTORRC_$(printf '%s' "$service_name" | tr '-' '_')"
     eval "hs_torrc_value=\${${hs_torrc_var}-}"
     append_torrc_block "Per-service torrc (${hs_torrc_var})" "$hs_torrc_value"
