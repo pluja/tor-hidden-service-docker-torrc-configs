@@ -185,6 +185,63 @@ docker run -d \
   api:api-container:8080:80
 ```
 
+### Custom torrc directives
+
+Two env vars accept multi-line torrc content verbatim and are appended to
+the generated `/etc/tor/torrc` at boot:
+
+| Variable | Where it lands | Use for |
+|----------|----------------|---------|
+| `TORRC` | After `SocksPort`, before any hidden service section | Global directives (`ControlPort`, `Log`, `ClientUseIPv6`, …) |
+| `HSTORRC_<SERVICE>` | Immediately after that service's `HiddenServicePort` line | Per-service directives (`HiddenServicePoWDefensesEnabled`, `HiddenServiceMaxStreams`, …) |
+
+Service names with hyphens map to underscores when forming the env var
+name (`HS_MY-API` → `HSTORRC_MY_API`), since POSIX env names cannot
+contain hyphens.
+
+The content is appended verbatim (only NUL bytes and CR are stripped).
+Tor validates directives at startup; bad config fails fast with a clear
+error in the container logs.
+
+```yaml
+services:
+  tor:
+    image: ghcr.io/hundehausen/tor-hidden-service:latest
+    environment:
+      SOCKS_BIND: 127.0.0.1
+      HS_WEB: web:80:80
+      HS_API: api:8080:80
+
+      # Global directives, applied to the whole tor instance.
+      TORRC: |
+        ClientUseIPv6 1
+
+      # Per-service hardening for WEB only. Proof-of-Work makes onion
+      # clients spend CPU before reaching the introduction circuit, which
+      # blunts DoS swarms. IntroDoSDefense caps introduction rate per
+      # circuit.
+      HSTORRC_WEB: |
+        HiddenServicePoWDefensesEnabled 1
+        HiddenServicePoWQueueRate 250
+        HiddenServicePoWQueueBurst 1000
+        HiddenServiceEnableIntroDoSDefense 1
+        HiddenServiceEnableIntroDoSRatePerSec 25
+        HiddenServiceEnableIntroDoSBurstPerSec 200
+
+      # Cap concurrent streams per circuit on the API service. Useful for
+      # API endpoints where one client opening hundreds of streams is
+      # almost certainly abuse.
+      HSTORRC_API: |
+        HiddenServiceMaxStreams 50
+        HiddenServiceMaxStreamsCloseCircuit 1
+```
+
+To debug, exec into the container and inspect the rendered torrc:
+
+```bash
+docker exec tor-hidden-service cat /etc/tor/torrc
+```
+
 ## 🛡️ Security
 
 ### Hardening Checklist
